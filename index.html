@@ -210,7 +210,7 @@ var PLAN_TASKS=[
 
 var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:false,postNote:'',icpApproved:false,planOpen:false,running:false,runTaskIdx:0,runTimer:null,checksOpen:false,questionOpen:false,filter:'all',selected:{},bulkOpen:false,people:buildPeople(),expandKey:null,confirmDelKey:null,editorOpen:false,editorIdx:null,planOn:[true,true,true,true]};
 
-// --- Persistence: shared backend (/api/state) with localStorage as offline cache ---
+// --- Persistence: shared backend (/api/state) with localStorage as offline cache --- (storage connected)
 // localStorage keeps the app instant + working offline; the API is the shared source
 // of truth so approvals/edits sync across every computer and browser.
 var LS_KEY='relify_dashboard_v1';
