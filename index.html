@@ -210,10 +210,21 @@ var PLAN_TASKS=[
 
 var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:false,postNote:'',icpApproved:false,planOpen:false,running:false,runTaskIdx:0,runTimer:null,checksOpen:false,questionOpen:false,filter:'all',selected:{},bulkOpen:false,people:buildPeople(),expandKey:null,confirmDelKey:null,editorOpen:false,editorIdx:null,planOn:[true,true,true,true]};
 
-// --- Persistence: durable state survives page refresh (localStorage) ---
+// --- Persistence: shared backend (/api/state) with localStorage as offline cache ---
+// localStorage keeps the app instant + working offline; the API is the shared source
+// of truth so approvals/edits sync across every computer and browser.
 var LS_KEY='relify_dashboard_v1';
-function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify({v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people}));}catch(e){}}
-function loadState(){try{var raw=localStorage.getItem(LS_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;}catch(e){}}
+function snapshot(){return {v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people};}
+function applySnapshot(d){if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;}
+// persist() is called on every render: cache locally, and (debounced) push to the shared API.
+function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}if(!S._suppressSave)scheduleSave();}
+function loadState(){try{var raw=localStorage.getItem(LS_KEY);if(!raw)return;applySnapshot(JSON.parse(raw));}catch(e){}}
+var _saveTimer=null;
+function scheduleSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveServer,600);}
+function saveServer(){try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snapshot()})}).catch(function(){});}catch(e){}}
+// Pull shared state from the API and apply it if present (server wins). Suppress the
+// echo-save that the resulting render would otherwise trigger.
+function loadServer(){try{fetch('/api/state').then(function(r){return r.ok?r.json():null;}).then(function(j){if(j&&j.state){S._suppressSave=true;applySnapshot(j.state);render();S._suppressSave=false;try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}}}).catch(function(){});}catch(e){}}
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function jstr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
@@ -377,6 +388,10 @@ function render(){
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(S.bulkOpen){S.bulkOpen=false;render();}else if(S.editorOpen){S.editorOpen=false;render();}else if(S.planOpen){S.planOpen=false;render();}}});
 loadState();
 render();
+loadServer();
+// Pick up changes made on other devices when this tab regains focus.
+document.addEventListener('visibilitychange',function(){if(!document.hidden)loadServer();});
+window.addEventListener('focus',loadServer);
 </script>
 </body>
 </html>
