@@ -1,4 +1,4 @@
-// Shared-state API for the Relify dashboard.
+// Shared-state API for the Relify dashboard. (deploy trigger: storage connected)
 // GET  /api/state        -> { state: <object|null> }   reads the shared dashboard state
 // POST /api/state {state} -> { ok: true }                saves the shared dashboard state
 //
