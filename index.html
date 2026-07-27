@@ -219,23 +219,26 @@ function applySnapshot(d){if(!d)return;if(d.people&&d.people.length)S.people=d.p
 // persist() is called on every render: always cache locally; push to the shared API only
 // once we're "ready" (after the first server reconcile) so the initial paint of an empty
 // device can never overwrite real data on the server.
-function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}if(S._ready&&!S._suppressSave)scheduleSave();}
+// _epoch counts local edits. Any edit made while a server pull is in flight makes that
+// pull's (now-stale) result get discarded, so your click can never be overwritten.
+var _saveTimer=null,_epoch=0;
+function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}if(!S._suppressSave){_epoch++;if(S._ready)scheduleSave();}}
 function loadState(){try{var raw=localStorage.getItem(LS_KEY);if(!raw)return;applySnapshot(JSON.parse(raw));}catch(e){}}
-var _saveTimer=null;
 function scheduleSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveServer,600);}
 function saveServer(){_saveTimer=null;try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snapshot()})}).catch(function(){});}catch(e){}}
 // Reconcile with the shared state. Rules:
-//  - server has data  -> server wins (unless we have unsaved local edits pending, which we keep)
-//  - server is empty  -> seed it from this device so it's never blank
-//  - request failed   -> keep local; still allow future saves
-function loadServer(){try{fetch('/api/state').then(function(r){return r.ok?r.json():null;}).then(function(j){
+//  - you edited during the fetch -> your change wins; push it up
+//  - server has data            -> apply it (server wins)
+//  - server is empty            -> seed it from this device so it's never blank
+//  - request failed             -> keep local; still allow future saves
+function loadServer(){try{var e=_epoch;fetch('/api/state').then(function(r){return r.ok?r.json():null;}).then(function(j){
+  if(_epoch!==e){S._ready=true;saveServer();return;}   // local edit happened mid-fetch -> your change wins
   if(j&&j.state){
-    if(_saveTimer){S._ready=true;return;}            // unsaved local edits pending -> don't clobber them
     S._suppressSave=true;applySnapshot(j.state);render();S._suppressSave=false;
-    try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}
+    try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e2){}
     S._ready=true;
   }else{
-    S._ready=true;saveServer();                       // server empty -> seed from this device
+    S._ready=true;saveServer();                        // server empty -> seed from this device
   }
 }).catch(function(){S._ready=true;});}catch(e){S._ready=true;}}
 
