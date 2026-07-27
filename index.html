@@ -210,6 +210,11 @@ var PLAN_TASKS=[
 
 var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:false,postNote:'',icpApproved:false,planOpen:false,running:false,runTaskIdx:0,runTimer:null,checksOpen:false,questionOpen:false,filter:'all',selected:{},bulkOpen:false,people:buildPeople(),expandKey:null,confirmDelKey:null,editorOpen:false,editorIdx:null,planOn:[true,true,true,true]};
 
+// --- Persistence: durable state survives page refresh (localStorage) ---
+var LS_KEY='relify_dashboard_v1';
+function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify({v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people}));}catch(e){}}
+function loadState(){try{var raw=localStorage.getItem(LS_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;}catch(e){}}
+
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function jstr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function initials(n){return n.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();}
@@ -365,10 +370,12 @@ function vEditorModal(){if(!S.editorOpen)return '';var p=S.editorIdx!=null?S.peo
 function vBulkModal(){if(!S.bulkOpen)return '';var n=Object.keys(S.selected).length;
   return '<div class="overlay" onclick="A.bulkEditClose()"><div class="modal" style="width:480px" onclick="event.stopPropagation()"><div style="font-weight:800;font-size:16px">Bulk edit '+n+' prospect'+(n>1?'s':'')+'</div><div class="page-sub" style="margin-bottom:16px">Set a field for every selected prospect. Leave a field on &ldquo;No change&rdquo; to keep it as-is.</div><div style="display:flex;flex-direction:column;gap:13px"><div><div style="font-size:12px;font-weight:800;margin-bottom:5px">Approval</div><select id="bAppr" class="f"><option value="">No change</option><option value="Approved">Approve</option><option value="Pending">Set to pending</option></select></div><div><div style="font-size:12px;font-weight:800;margin-bottom:5px">Pipeline stage</div><select id="bStage" class="f"><option value="">No change</option>'+['Sourced','Warming','Connected','Conversation','Meeting set'].map(function(o){return '<option value="'+o+'">'+o+'</option>';}).join('')+'</select></div><div><div style="font-size:12px;font-weight:800;margin-bottom:5px">Role / segment</div><select id="bRole" class="f"><option value="">No change</option>'+['Marketing','Operations','Owner/CEO','Tech'].map(function(o){return '<option value="'+o+'">'+o+'</option>';}).join('')+'</select></div></div><div style="display:flex;gap:10px;margin-top:20px"><button class="btn btn-teal" style="height:38px" onclick="A.bulkEditApply()">Apply to '+n+'</button><button class="btn btn-out" style="height:38px" onclick="A.bulkEditClose()">Cancel</button></div></div></div>';}
 function render(){
+  persist();
   var body;switch(S.screen){case 'prospects':body=vProspects();break;case 'activity':body=vActivity();break;case 'strategy':body=vStrategy();break;case 'content':body=vContent();break;case 'conversations':body=vConversations();break;case 'analytics':body=vAnalytics();break;default:body=vDashboard();}
   document.getElementById('app').innerHTML='<div class="app">'+vSidebar()+'<div class="main">'+vTopbar()+'<main class="scroll">'+body+'</main></div></div>'+vPlanModal()+vEditorModal()+vBulkModal()+(S.toast?'<div class="toast">'+esc(S.toast)+'</div>':'');
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(S.bulkOpen){S.bulkOpen=false;render();}else if(S.editorOpen){S.editorOpen=false;render();}else if(S.planOpen){S.planOpen=false;render();}}});
+loadState();
 render();
 </script>
 </body>
