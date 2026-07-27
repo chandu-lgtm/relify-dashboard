@@ -216,15 +216,28 @@ var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:fa
 var LS_KEY='relify_dashboard_v1';
 function snapshot(){return {v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people};}
 function applySnapshot(d){if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;}
-// persist() is called on every render: cache locally, and (debounced) push to the shared API.
-function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}if(!S._suppressSave)scheduleSave();}
+// persist() is called on every render: always cache locally; push to the shared API only
+// once we're "ready" (after the first server reconcile) so the initial paint of an empty
+// device can never overwrite real data on the server.
+function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}if(S._ready&&!S._suppressSave)scheduleSave();}
 function loadState(){try{var raw=localStorage.getItem(LS_KEY);if(!raw)return;applySnapshot(JSON.parse(raw));}catch(e){}}
 var _saveTimer=null;
 function scheduleSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveServer,600);}
-function saveServer(){try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snapshot()})}).catch(function(){});}catch(e){}}
-// Pull shared state from the API and apply it if present (server wins). Suppress the
-// echo-save that the resulting render would otherwise trigger.
-function loadServer(){try{fetch('/api/state').then(function(r){return r.ok?r.json():null;}).then(function(j){if(j&&j.state){S._suppressSave=true;applySnapshot(j.state);render();S._suppressSave=false;try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}}}).catch(function(){});}catch(e){}}
+function saveServer(){_saveTimer=null;try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:snapshot()})}).catch(function(){});}catch(e){}}
+// Reconcile with the shared state. Rules:
+//  - server has data  -> server wins (unless we have unsaved local edits pending, which we keep)
+//  - server is empty  -> seed it from this device so it's never blank
+//  - request failed   -> keep local; still allow future saves
+function loadServer(){try{fetch('/api/state').then(function(r){return r.ok?r.json():null;}).then(function(j){
+  if(j&&j.state){
+    if(_saveTimer){S._ready=true;return;}            // unsaved local edits pending -> don't clobber them
+    S._suppressSave=true;applySnapshot(j.state);render();S._suppressSave=false;
+    try{localStorage.setItem(LS_KEY,JSON.stringify(snapshot()));}catch(e){}
+    S._ready=true;
+  }else{
+    S._ready=true;saveServer();                       // server empty -> seed from this device
+  }
+}).catch(function(){S._ready=true;});}catch(e){S._ready=true;}}
 
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function jstr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
