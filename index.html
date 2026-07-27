@@ -273,6 +273,7 @@ var A={
   approveActivity:function(id){var a=A._act(id);if(a){a.status='approved';a.decidedAt='Jul 27';}render();toast('Comment approved — cleared to post');},
   rejectActivity:function(id){var a=A._act(id);if(a){a.status='rejected';a.decidedAt='Jul 27';}render();toast('Comment rejected — it won\'t be posted');},
   editActivity:function(id){S.editActId=(S.editActId===id?null:id);render();},
+  reopenActivity:function(id){var a=A._act(id);if(a){a.status='pending';a.decidedAt=null;}render();toast('Reopened for review');},
   saveActivityEdit:function(id){var el=document.getElementById('actEdit_'+id);var a=A._act(id);if(a&&el){a.text=el.value.trim();a.edited=true;}S.editActId=null;render();toast('Draft updated');},
   toast:function(m){toast(m);},
   openPlan:function(){S.planOpen=true;render();},closePlan:function(){S.planOpen=false;render();},togglePlan:function(i){S.planOn[i]=!S.planOn[i];render();},
@@ -389,8 +390,8 @@ function actCard(a,editable){
   var reason='<div style="margin-top:11px;font-size:12px;color:var(--muted);line-height:1.55"><b style="color:var(--sec);font-weight:700">Why this:</b> '+esc(a.reason)+'</div>';
   var actions='';
   if(st==='pending'&&!(editable&&S.editActId===a.id)){actions='<div style="display:flex;gap:8px;margin-top:13px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><button class="btn btn-teal btn-sm" onclick="A.approveActivity(\''+a.id+'\')">Approve</button><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-sm" style="border:1px solid var(--danger-bd);background:#fff;color:var(--danger)" onclick="A.rejectActivity(\''+a.id+'\')">Reject</button></div>';}
-  else if(st==='approved'){actions='<div style="margin-top:12px;font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved — cleared to post (posted human-paced, not all at once)</div>';}
-  else if(st==='rejected'){actions='<div style="margin-top:12px;font-size:12px;color:var(--danger);font-weight:700">Rejected — won\'t be posted. Ask for a fresh draft.</div>';}
+  else if(st==='approved'){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved — cleared to post (human-paced)</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';}
+  else if(st==='rejected'){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px"><span style="font-size:12px;color:var(--danger);font-weight:700">Rejected — won\'t be posted</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';}
   return '<div class="card pad" style="margin-bottom:12px">'+head+post+draft+reason+actions+'</div>';
 }
 function planCard(a){
