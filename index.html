@@ -106,7 +106,8 @@
 <div id="app"></div>
 <script>
 "use strict";
-var TODAY="Thursday, Jul 23, 2026";
+var TODAY=new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric',year:'numeric'});
+function todayLabel(){return new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 var QUOTES=[
   {t:"You can make more friends in two months by becoming interested in other people than you can in two years by trying to get other people interested in you.",a:"Dale Carnegie"},
   {t:"The currency of real networking is not greed but generosity.",a:"Keith Ferrazzi"},
@@ -270,11 +271,11 @@ var A={
   rejectProspect:function(name){S.people=S.people.filter(function(x){return x.name!==name;});S.expandKey=null;render();toast('Prospect removed');},
   approveAll:function(){var n=pending();S.people.forEach(function(p){p.approved=true;});render();toast('Approved all '+n+' prospects — pipeline is live');},
   _act:function(id){return S.activities.filter(function(a){return a.id===id;})[0];},
-  approveActivity:function(id){var a=A._act(id);if(a){a.status='approved';a.decidedAt='Jul 27';}render();toast('Comment approved — cleared to post');},
-  rejectActivity:function(id){var a=A._act(id);if(a){a.status='rejected';a.decidedAt='Jul 27';}render();toast('Comment rejected — it won\'t be posted');},
+  approveActivity:function(id){var a=A._act(id);if(a){a.status='approved';a.decidedAt=todayLabel();}render();toast('Comment approved — cleared to post');},
+  rejectActivity:function(id){var a=A._act(id);if(a){a.status='rejected';a.decidedAt=todayLabel();}render();toast('Comment rejected — it won\'t be posted');},
   editActivity:function(id){S.editActId=(S.editActId===id?null:id);render();},
   reopenActivity:function(id){var a=A._act(id);if(a){a.status='pending';a.decidedAt=null;a.posted=null;}render();toast('Reopened for review');},
-  markPosted:function(id){var a=A._act(id);if(a){a.posted=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});}render();toast('Marked as posted — now live on LinkedIn');},
+  markPosted:function(id){var a=A._act(id);if(a){a.posted=todayLabel();}render();toast('Marked as posted — now live on LinkedIn');},
   unmarkPosted:function(id){var a=A._act(id);if(a){a.posted=null;}render();toast('Posted mark removed');},
   saveActivityEdit:function(id){var el=document.getElementById('actEdit_'+id);var a=A._act(id);if(a&&el){a.text=el.value.trim();a.edited=true;}S.editActId=null;render();toast('Draft updated');},
   toast:function(m){toast(m);},
@@ -292,7 +293,7 @@ var A={
   bulkEditApply:function(){var st=((document.getElementById('bStage')||{}).value)||'';var ro=((document.getElementById('bRole')||{}).value)||'';var ap=((document.getElementById('bAppr')||{}).value)||'';var SMAP={'Sourced':0,'Warming':1,'Connected':2,'Conversation':3,'Meeting set':4};var cnt=0;S.people.forEach(function(p){if(!S.selected[p.name])return;cnt++;if(st){p.stage=st;p.stageIdx=SMAP[st];}if(ro){p.segment=ro;}if(ap==='Approved')p.approved=true;else if(ap==='Pending')p.approved=false;});S.bulkOpen=false;render();toast('Updated '+cnt+' prospect'+(cnt>1?'s':''));},
   toggleRow:function(name){S.expandKey=(S.expandKey===name?null:name);S.confirmDelKey=null;render();},
   openAdd:function(){S.editorOpen=true;S.editorIdx=null;render();},openEdit:function(idx){S.editorOpen=true;S.editorIdx=idx;render();},closeEditor:function(){S.editorOpen=false;render();},
-  saveEditor:function(){var name=((document.getElementById('eName')||{}).value||'').trim();if(!name){toast('Name is required');return;}var title=((document.getElementById('eTitle')||{}).value||'').trim()||'—';var company=((document.getElementById('eCompany')||{}).value||'').trim()||'—';var li=((document.getElementById('eLi')||{}).value||'').trim();var meta=scoreProspect(title,company,true);var p={name:name,title:title,company:company,email:true,li:li,segment:meta.seg,score:meta.score,why:meta.why,stage:'Sourced',stageIdx:0,approved:true,when:['Jul 23','','','',''],jn:['Added manually',null,null,null,null]};if(S.editorIdx!=null){var old=S.people[S.editorIdx];p.approved=old.approved;S.people[S.editorIdx]=p;}else{S.people.unshift(p);}S.editorOpen=false;S.expandKey=name;render();toast(S.editorIdx!=null?'Prospect updated':'Prospect added');},
+  saveEditor:function(){var name=((document.getElementById('eName')||{}).value||'').trim();if(!name){toast('Name is required');return;}var title=((document.getElementById('eTitle')||{}).value||'').trim()||'—';var company=((document.getElementById('eCompany')||{}).value||'').trim()||'—';var li=((document.getElementById('eLi')||{}).value||'').trim();var meta=scoreProspect(title,company,true);var p={name:name,title:title,company:company,email:true,li:li,segment:meta.seg,score:meta.score,why:meta.why,stage:'Sourced',stageIdx:0,approved:true,when:[todayLabel(),'','','',''],jn:['Added manually',null,null,null,null]};if(S.editorIdx!=null){var old=S.people[S.editorIdx];p.approved=old.approved;S.people[S.editorIdx]=p;}else{S.people.unshift(p);}S.editorOpen=false;S.expandKey=name;render();toast(S.editorIdx!=null?'Prospect updated':'Prospect added');},
   delAsk:function(name){if(S.confirmDelKey!==name){S.confirmDelKey=name;render();return;}S.people=S.people.filter(function(x){return x.name!==name;});S.confirmDelKey=null;S.expandKey=null;render();toast('Prospect deleted');}
 };
 
