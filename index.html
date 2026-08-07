@@ -280,7 +280,7 @@ function pipelineStrip(){
 
 var A={
   go:function(sc){S.screen=sc;S.expandKey=null;render();var el=document.querySelector('.scroll');if(el)el.scrollTop=0;},
-  approvePost:function(){S.postApproval='approved';S.postAsk=false;render();toast('Post #1 approved — scheduled for the next posting slot');},
+  approvePost:function(){S.postApproval='approved';S.postAsk=false;render();toast('Post #1 approved — goes out '+nextPostSlot().label);},
   holdPost:function(){S.postApproval='held';S.postNote='Kept as a draft by you — the agent will not publish it.';render();toast('Kept as a draft — this post will not publish');},
   approveIcp:function(){S.icpApproved=true;render();toast('ICP confirmed — targeting locked for sourcing');},
   approveProspect:function(name){var p=S.people.filter(function(x){return x.name===name;})[0];if(p)p.approved=true;render();toast(name+' approved — added to the pipeline');},
