@@ -226,14 +226,14 @@ var PLAN_TASKS=[
   {title:'Publish approved content',desc:'If Post #1 is approved, post it. Otherwise hold.'}
 ];
 
-var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:false,postNote:'',icpApproved:false,checksOpen:false,pace:null,filter:'all',selected:{},bulkOpen:false,people:buildPeople(),expandKey:null,confirmDelKey:null,editorOpen:false,editorIdx:null,planOn:[true,true,true,true],activities:[],editActId:null};
+var S={screen:'dashboard',toast:'',toastT:null,postApproval:'pending',postAsk:false,postNote:'',icpApproved:false,checksOpen:false,pace:null,nextPlan:null,filter:'all',selected:{},bulkOpen:false,people:buildPeople(),expandKey:null,confirmDelKey:null,editorOpen:false,editorIdx:null,planOn:[true,true,true,true],activities:[],editActId:null};
 
 // --- Persistence: shared backend (/api/state) with localStorage as offline cache --- (storage connected)
 // localStorage keeps the app instant + working offline; the API is the shared source
 // of truth so approvals/edits sync across every computer and browser.
 var LS_KEY='relify_dashboard_v1';
-function snapshot(){return {v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people,activities:S.activities,pace:S.pace};}
-function applySnapshot(d){if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;if(d.pace)S.pace=d.pace;if(d.activities)S.activities=d.activities;}
+function snapshot(){return {v:1,icpApproved:S.icpApproved,postApproval:S.postApproval,postNote:S.postNote,planOn:S.planOn,people:S.people,activities:S.activities,pace:S.pace,nextPlan:S.nextPlan};}
+function applySnapshot(d){if(!d)return;if(d.people&&d.people.length)S.people=d.people;if(typeof d.icpApproved==='boolean')S.icpApproved=d.icpApproved;if(d.postApproval)S.postApproval=d.postApproval;if(typeof d.postNote==='string')S.postNote=d.postNote;if(d.planOn&&d.planOn.length)S.planOn=d.planOn;if(d.pace)S.pace=d.pace;if(d.nextPlan)S.nextPlan=d.nextPlan;if(d.activities)S.activities=d.activities;}
 // persist() is called on every render: always cache locally; push to the shared API only
 // once we're "ready" (after the first server reconcile) so the initial paint of an empty
 // device can never overwrite real data on the server.
@@ -433,6 +433,33 @@ function actCard(a,editable){
 function planCard(a){
   return '<div class="card pad" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:30px;height:30px;border-radius:50%;background:#EDEAF8;color:#5B4AA8;display:grid;place-items:center;font-weight:800;font-size:11px;flex-shrink:0">'+initials(a.name)+'</div><div style="min-width:0"><div style="font-weight:800;font-size:13px">'+esc(a.name)+'</div><div style="font-size:11.5px;color:var(--muted);font-weight:600">'+esc(a.company)+'</div></div><div class="spacer"></div><span class="badge" style="background:#EDEAF8;color:#5B4AA8">'+esc(a.label||'Warm-up')+'</span>'+liLink(a.li,'in')+'</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.55">'+esc(a.reason)+'</div>'+(a.text?'<div style="margin-top:9px;font-size:12px;color:var(--muted);line-height:1.55"><b style="color:var(--sec);font-weight:700">Plan:</b> '+esc(a.text)+'</div>':'')+(a.note?'<div style="margin-top:11px"><div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--teal-h);margin-bottom:5px">Draft connection note</div><div style="background:var(--teal-soft);border:1px solid #D8EAE5;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;color:var(--ink)">'+esc(a.note)+'</div></div>':'')+'</div>';
 }
+function nextSessionCard(){
+  var P=S.nextPlan;
+  if(!P||!P.steps||!P.steps.length)return '';
+  var caps=[];
+  if(P.engageCap!=null)caps.push(P.engageCap+' comment'+(P.engageCap===1?'':'s')+'/likes');
+  if(P.invitesAllowed&&P.inviteCap!=null)caps.push(P.inviteCap+' connection request'+(P.inviteCap===1?'':'s'));
+  else caps.push('no connection requests yet');
+  var meta=[];
+  if(P.band)meta.push('ramp stage: '+P.band);
+  if(P.dayShape)meta.push(P.dayShape+' day');
+  return '<div class="card" style="border-color:#BFE0DA;overflow:hidden;margin-bottom:16px">'
+    +'<div style="display:flex;align-items:center;gap:10px;padding:13px 20px;background:var(--teal-soft);border-bottom:1px solid #D8EAE5;flex-wrap:wrap">'
+    +'<span style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>'
+    +'<div style="font-weight:800;font-size:13.5px;color:var(--teal-h)">What happens next</div>'
+    +'<div class="spacer"></div>'
+    +'<span class="mono" style="font-size:11.5px;font-weight:700;color:var(--teal-h)">'+esc(P.at||'')+'</span></div>'
+    +'<div style="padding:15px 20px">'
+    +'<div style="display:flex;flex-direction:column;gap:9px">'
+    +P.steps.map(function(s){return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink2);line-height:1.55"><span style="color:var(--teal);font-weight:800;flex-shrink:0">-</span><span>'+esc(s)+'</span></div>';}).join('')
+    +'</div>'
+    +'<div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--border-soft);display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600">'
+    +'<span>Today\'s limit: '+esc(caps.join(' · '))+'</span>'
+    +(meta.length?'<span>'+esc(meta.join(' · '))+'</span>':'')
+    +'<div class="spacer"></div><span>Updated '+esc(P.updatedAt||'')+'</span></div>'
+    +'</div></div>';
+}
+
 function vActivity(){
   var acts=S.activities||[];
   var pendC=acts.filter(function(a){return a.type==='comment'&&a.status==='pending';});
@@ -443,7 +470,7 @@ function vActivity(){
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px;border-bottom:1px solid var(--hair)"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 27</span><span class="badge" style="background:var(--green-tint);color:var(--green-tx);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Approve</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">All 50 prospects approved into the pipeline</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Approved and syncing across devices via the shared backend.</div></div></div>'+
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px;border-bottom:1px solid var(--hair)"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 23</span><span class="badge" style="background:var(--teal-tint);color:var(--teal-h);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Enrich</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Enriched all 50 prospects</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Full names and LinkedIn profile URLs revealed and linked in the Prospects tab.</div></div></div>'+
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 23</span><span class="badge" style="background:var(--purple-tint);color:var(--purple);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Update</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Revised the prospect list per client feedback</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Kept 25 operations leaders; backfilled with 25 marketing leaders and SMB owners/CEOs across all industries.</div></div></div></div></div>';
-  var out='<div class="screen narrow"><div><div class="page-h">Activity</div><div class="page-sub">Every action taken on your behalf - each with the reasoning, and your approval where it matters</div></div>';
+  var out='<div class="screen narrow"><div><div class="page-h">Activity</div><div class="page-sub">Every action taken on your behalf - each with the reasoning, and your approval where it matters</div></div>'+nextSessionCard();
   out+=pipelineStrip();
   if(pendC.length){out+='<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber-tx)">Awaiting your approval - warm-up comments</span><span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">'+pendC.length+'</span></div>'+pendC.map(function(a){return actCard(a,true);}).join('')+'</div>';}
   if(plan.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Warm-up plan · quiet profiles (no recent post to comment on)</div>'+plan.map(function(a){return planCard(a);}).join('')+'</div>';}
