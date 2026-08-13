@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
     if (pendingComments.length) {
       lines.push('*' + pendingComments.length + ' comment draft' + (pendingComments.length > 1 ? 's' : '') + ' awaiting your approval*');
       pendingComments.slice(0, 5).forEach(function (a) {
-        lines.push('• *' + (a.name || 'Unknown') + '*' + (a.company ? ' (' + a.company + ')' : '') + ' — “' + String(a.text || '').slice(0, 110) + '”');
+        lines.push('• *' + (a.name || 'Unknown') + '*' + (a.company ? ' (' + a.company + ')' : '') + ' - “' + String(a.text || '').slice(0, 110) + '”');
       });
       if (pendingComments.length > 5) lines.push('• …and ' + (pendingComments.length - 5) + ' more');
     }
@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
     var payload = {
       text: '[' + CLIENT + '] ' + total + ' item' + (total > 1 ? 's' : '') + ' waiting for approval',
       blocks: [
-        { type: 'header', text: { type: 'plain_text', text: '🔔 ' + CLIENT + ' — ' + total + ' item' + (total > 1 ? 's' : '') + ' waiting for approval' } },
+        { type: 'header', text: { type: 'plain_text', text: '🔔 ' + CLIENT + ' - ' + total + ' item' + (total > 1 ? 's' : '') + ' waiting for approval' } },
         { type: 'section', text: { type: 'mrkdwn', text: lines.join('\n') } },
         { type: 'actions', elements: [
           { type: 'button', style: 'primary', text: { type: 'plain_text', text: 'Review in dashboard' }, url: APP }
