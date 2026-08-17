@@ -418,17 +418,22 @@ function actCard(a,editable){
   var st=a.status;
   var head='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:30px;height:30px;border-radius:50%;background:var(--teal-tint);color:var(--teal-h);display:grid;place-items:center;font-weight:800;font-size:11px;flex-shrink:0">'+initials(a.name)+'</div><div style="min-width:0"><div style="font-weight:800;font-size:13px">'+esc(a.name)+'</div><div style="font-size:11.5px;color:var(--muted);font-weight:600">'+esc(a.company)+'</div></div><div class="spacer"></div>'+(st==='approved'?'<span class="badge" style="background:var(--green-tint);color:var(--green-tx)">Approved</span>':st==='rejected'?'<span class="badge" style="background:#FCEBE8;color:var(--danger)">Rejected</span>':'<span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">Comment · pending</span>')+liLink(a.li,'in')+'</div>';
   var post='<div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--faint);margin-bottom:4px">Their latest post</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.55;margin-bottom:12px">'+esc(a.post)+'</div>';
+  // Anything not yet live on LinkedIn can still be edited. Once a.posted is set
+  // the text is public, so editing the record would only make the dashboard
+  // disagree with reality.
+  var isEditing=(editable&&!a.posted&&S.editActId===a.id);
   var draft;
-  if(editable&&S.editActId===a.id){
+  if(isEditing){
     draft='<div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--teal-h);margin-bottom:5px">Edit draft comment</div><textarea id="actEdit_'+a.id+'" class="f" style="width:100%;min-height:90px;line-height:1.5;font-size:13px;padding:10px 12px">'+esc(a.text)+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-teal btn-sm" onclick="A.saveActivityEdit(\''+a.id+'\')">Save draft</button><button class="btn btn-out btn-sm" onclick="A.editActivity(\''+a.id+'\')">Cancel</button></div>';
   }else{
     draft='<div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--teal-h);margin-bottom:5px">Draft comment'+(a.edited?' · edited by you':'')+'</div><div style="background:var(--teal-soft);border:1px solid #D8EAE5;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;color:var(--ink)">'+esc(a.text)+'</div>';
   }
   var reason='<div style="margin-top:11px;font-size:12px;color:var(--muted);line-height:1.55"><b style="color:var(--sec);font-weight:700">Why this:</b> '+esc(a.reason)+'</div>';
   var actions='';
-  if(st==='pending'&&!(editable&&S.editActId===a.id)){actions='<div style="display:flex;gap:8px;margin-top:13px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><button class="btn btn-teal btn-sm" onclick="A.approveActivity(\''+a.id+'\')">Approve</button><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-sm" style="border:1px solid var(--danger-bd);background:#fff;color:var(--danger)" onclick="A.rejectActivity(\''+a.id+'\')">Reject</button></div>';}
+  if(isEditing){actions='';}
+  else if(st==='pending'){actions='<div style="display:flex;gap:8px;margin-top:13px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><button class="btn btn-teal btn-sm" onclick="A.approveActivity(\''+a.id+'\')">Approve</button><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-sm" style="border:1px solid var(--danger-bd);background:#fff;color:var(--danger)" onclick="A.rejectActivity(\''+a.id+'\')">Reject</button></div>';}
   else if(st==='approved'&&a.posted){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Posted to LinkedIn · '+esc(a.posted)+'</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.unmarkPosted(\''+a.id+'\')">Undo</button></div>';}
-  else if(st==='approved'){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved - cleared to post (human-paced)</span><div class="spacer"></div><button class="btn btn-teal btn-sm" onclick="A.markPosted(\''+a.id+'\')">Mark posted</button><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';}
+  else if(st==='approved'){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved - cleared to post (human-paced)</span><div class="spacer"></div><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-teal btn-sm" onclick="A.markPosted(\''+a.id+'\')">Mark posted</button><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';}
   else if(st==='rejected'){actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px"><span style="font-size:12px;color:var(--danger);font-weight:700">Rejected - won\'t be posted</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';}
   return '<div class="card pad" style="margin-bottom:12px">'+head+post+draft+reason+actions+'</div>';
 }
@@ -498,7 +503,7 @@ function vActivity(){
   out+=pipelineStrip();
   if(pendC.length){out+='<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber-tx)">Awaiting your approval - warm-up comments</span><span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">'+pendC.length+'</span></div>'+pendC.map(function(a){return actCard(a,true);}).join('')+'</div>';}
   if(plan.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Warm-up plan · quiet profiles (no recent post to comment on)</div>'+plan.map(function(a){return planCard(a);}).join('')+'</div>';}
-  if(doneC.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Reviewed comments</div>'+doneC.map(function(a){return actCard(a,false);}).join('')+'</div>';}
+  if(doneC.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Reviewed comments</div>'+doneC.map(function(a){return actCard(a,true);}).join('')+'</div>';}
   out+=log;
   out+='</div>';return out;
 }
@@ -519,7 +524,9 @@ function vStrategy(){
 }
 
 function queuedPostCard(a){
-  var editing=(S.editActId===a.id);
+  // Same rule as actCard: once it is published the text is public, so the
+  // editor closes. Guards the case where a sync marks it posted mid-edit.
+  var editing=(S.editActId===a.id&&!a.posted);
   var st=a.status||'pending';
   var badge = st==='approved' ? (a.posted?'POSTED':'APPROVED') : (st==='rejected'?'REJECTED':'AWAITING YOUR APPROVAL');
   var bg = st==='approved' ? 'var(--teal-tint)' : (st==='rejected'?'#FDECEC':'var(--amber-tint)');
@@ -530,12 +537,20 @@ function queuedPostCard(a){
     : '<div style="font-size:13px;line-height:1.65;color:var(--ink2);white-space:pre-wrap">'+esc(a.text)+'</div>';
   var why='<div style="border:1px solid var(--border);border-radius:11px;padding:11px 14px;margin-top:12px"><div class="eyebrow" style="margin-bottom:5px">Why post this</div><div style="font-size:12.5px;line-height:1.55;color:var(--ink2)">'+esc(a.reason)+'</div></div>';
   var actions='';
-  if(st==='pending'&&!editing){
+  // While the editor is open, show only Save/Cancel. Rendering the status
+  // actions underneath an open textarea let you hit "Mark posted" mid-edit.
+  if(editing){
+    actions='';
+  } else if(st==='pending'){
     actions='<div style="display:flex;gap:8px;margin-top:13px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><button class="btn btn-teal btn-sm" onclick="A.approveActivity(\''+a.id+'\')">Approve</button><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-sm" style="border:1px solid var(--danger-bd);background:#fff;color:var(--danger)" onclick="A.rejectActivity(\''+a.id+'\')">Reject</button></div>';
   } else if(st==='approved'&&a.posted){
     actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Published '+esc(a.posted)+'</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.unmarkPosted(\''+a.id+'\')">Undo</button></div>';
   } else if(st==='approved'){
-    actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved, goes out '+esc(slot.label)+'</span><div class="spacer"></div><button class="btn btn-teal btn-sm" onclick="A.markPosted(\''+a.id+'\')">Mark posted</button><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';
+    // Edit stays available after approval, up until it actually publishes.
+    // Approving is not the same as finishing: you often spot a wording change
+    // afterwards, and without this the only route was Reopen, which looks like
+    // withdrawing approval and re-queues the item.
+    actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved, goes out '+esc(slot.label)+'</span><div class="spacer"></div><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-teal btn-sm" onclick="A.markPosted(\''+a.id+'\')">Mark posted</button><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';
   } else if(st==='rejected'){
     actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px"><span style="font-size:12px;color:var(--danger);font-weight:700">Rejected, will not be published</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';
   }
