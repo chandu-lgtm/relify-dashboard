@@ -207,28 +207,34 @@ function personaOf(t){var s=t.toLowerCase();
 //   (advertising, event flyers, bare reposts, wrong language, off-ICP topics).
 //   Frequency alone is not a buying signal: someone posting a driveway ad every
 //   day is no more reachable than someone silent, so they are capped low.
+// WEIGHTING, rebalanced 2026-08-18. Activity is worth 40 of 100, more than any
+// other factor, because this engagement is paid on booked demos and a perfect-fit
+// prospect who last posted years ago cannot produce one soon. Under the old
+// 40/35/15/10 split, fit alone was 90 points, so a five-years-dormant CIO still
+// scored 87 and sat near the top of the list. Fit says whether they are worth
+// talking to; activity says whether a conversation can actually be started now.
 function activityScore(days,usable){
-  if(days===null||days===undefined)return [0,'Not measured yet - scored after their profile is checked'];
-  if(days<0)return [0,'Has never posted. Cannot be commented on, so connection note only'];
-  if(usable===false)return [2,'Posts regularly, but it is advertising or reposts with nothing to engage with'];
-  if(days<=7)return [10,'Posted in the last week - commentable, and warm touches land best here'];
-  if(days<=14)return [7,'Posted within 14 days - just inside the freshness limit for a comment'];
-  if(days<=30)return [4,'Last posted about '+Math.round(days/7)+' weeks ago - too stale to comment on'];
-  if(days<=90)return [2,'Last posted about '+Math.round(days/30)+' months ago - effectively dormant'];
-  return [1,'Last posted over 3 months ago - dormant, connection note only'];
+  if(days===null||days===undefined)return [0,'Not checked yet, so this score is provisional until we look at their profile'];
+  if(days<0)return [0,'Has never posted. No way in except a connection note, and no signal they read LinkedIn'];
+  if(usable===false)return [8,'Posts regularly, but it is advertising or reposts with nothing to engage with'];
+  if(days<=7)return [40,'Posted in the last week. Commentable now, and warm touches land best here'];
+  if(days<=14)return [30,'Posted within 14 days, just inside the freshness limit for a comment'];
+  if(days<=30)return [16,'Last posted about '+Math.round(days/7)+' weeks ago. Too stale to comment on'];
+  if(days<=90)return [8,'Last posted about '+Math.round(days/30)+' months ago. Effectively dormant'];
+  return [4,'Last posted over 3 months ago. Dormant, so a demo from here is unlikely soon'];
 }
 function scoreProspect(title,co,email,activityDays,contentUsable){
   var persona=personaOf(title);var s=title.toLowerCase();
   var roles=(s.match(/coo|cio|cto|cmo|ceo|president|cxo|cdo|ciso|founder|owner/g)||[]).length;
-  var role=roles>=3?40:roles===2?38:/vp|head|director|manager/.test(s)?33:36;
+  var role=roles>=3?25:roles===2?24:/vp|head|director|manager/.test(s)?21:23;
   var target=(persona==='Marketing'||persona==='Operations'||persona==='Owner/CEO');
-  var fit=target?33:26;var reach=email?13:8;
+  var fit=target?24:19;var reach=email?9:5;
   var act=activityScore(typeof activityDays==='undefined'?null:activityDays,contentUsable);
   var why=[
-    [role,40,'Role & seniority fit',roles>=2?'Senior decision-maker wearing multiple hats':'Senior executive with buying authority'],
-    [fit,35,'Persona & size fit',persona+' · SMB-mid-market · United States'],
-    [reach,15,'Reachability',email?'Verified work email + LinkedIn profile on file':'LinkedIn profile on file; work email not verified'],
-    [act[0],10,'LinkedIn activity',act[1]]
+    [role,25,'Role & seniority fit',roles>=2?'Senior decision-maker wearing multiple hats':'Senior executive with buying authority'],
+    [fit,25,'Persona & size fit',persona+' · SMB-mid-market · United States'],
+    [reach,10,'Reachability',email?'Verified work email + LinkedIn profile on file':'LinkedIn profile on file; work email not verified'],
+    [act[0],40,'LinkedIn activity',act[1]]
   ];
   return {score:role+fit+reach+act[0], seg:persona, why:why};
 }
