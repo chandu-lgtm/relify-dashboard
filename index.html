@@ -197,19 +197,40 @@ function personaOf(t){var s=t.toLowerCase();
   if(/founder|owner|\bceo\b|president|chief executive/.test(s))return 'Owner/CEO';
   if(/cio|cto|technolog|information officer/.test(s))return 'Tech';
   return 'Other';}
-function scoreProspect(title,co,email){
+// How recently someone posts is the strongest predictor we have of whether they
+// convert: you can only comment on someone who posts, and prospects commented on
+// before the invite are accepting far better than cold ones. This used to be a
+// hardcoded 0/10 labelled "not measured yet", which meant a prospect who posts
+// daily scored identically to one who has never posted once.
+// days: days since their last post, -1 for never posted, null unmeasured.
+// usable: false when they post often but the content cannot be engaged with
+//   (advertising, event flyers, bare reposts, wrong language, off-ICP topics).
+//   Frequency alone is not a buying signal: someone posting a driveway ad every
+//   day is no more reachable than someone silent, so they are capped low.
+function activityScore(days,usable){
+  if(days===null||days===undefined)return [0,'Not measured yet - scored after their profile is checked'];
+  if(days<0)return [0,'Has never posted. Cannot be commented on, so connection note only'];
+  if(usable===false)return [2,'Posts regularly, but it is advertising or reposts with nothing to engage with'];
+  if(days<=7)return [10,'Posted in the last week - commentable, and warm touches land best here'];
+  if(days<=14)return [7,'Posted within 14 days - just inside the freshness limit for a comment'];
+  if(days<=30)return [4,'Last posted about '+Math.round(days/7)+' weeks ago - too stale to comment on'];
+  if(days<=90)return [2,'Last posted about '+Math.round(days/30)+' months ago - effectively dormant'];
+  return [1,'Last posted over 3 months ago - dormant, connection note only'];
+}
+function scoreProspect(title,co,email,activityDays,contentUsable){
   var persona=personaOf(title);var s=title.toLowerCase();
   var roles=(s.match(/coo|cio|cto|cmo|ceo|president|cxo|cdo|ciso|founder|owner/g)||[]).length;
   var role=roles>=3?40:roles===2?38:/vp|head|director|manager/.test(s)?33:36;
   var target=(persona==='Marketing'||persona==='Operations'||persona==='Owner/CEO');
   var fit=target?33:26;var reach=email?13:8;
+  var act=activityScore(typeof activityDays==='undefined'?null:activityDays,contentUsable);
   var why=[
     [role,40,'Role & seniority fit',roles>=2?'Senior decision-maker wearing multiple hats':'Senior executive with buying authority'],
     [fit,35,'Persona & size fit',persona+' · SMB-mid-market · United States'],
     [reach,15,'Reachability',email?'Verified work email + LinkedIn profile on file':'LinkedIn profile on file; work email not verified'],
-    [0,10,'Engagement signals','Not measured yet - starts after the first warmup session']
+    [act[0],10,'LinkedIn activity',act[1]]
   ];
-  return {score:role+fit+reach, seg:persona, why:why};
+  return {score:role+fit+reach+act[0], seg:persona, why:why};
 }
 function buildPeople(){
   return APOLLO.map(function(r){var meta=scoreProspect(r[1],r[2],r[3]);return {name:r[0],title:r[1],company:r[2],email:!!r[3],li:r[4]||'',segment:meta.seg,score:meta.score,why:meta.why,stage:'Sourced',stageIdx:0,approved:false,when:['Jul 23','','','',''],jn:['Sourced from Apollo - '+meta.seg+' · awaiting your approval',null,null,null,null]};});
