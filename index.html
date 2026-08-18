@@ -337,7 +337,8 @@ function vDashboard(){
   var pendNotes=(S.activities||[]).filter(function(a){return a.type==='notes'&&a.status==='pending';});
   var pendPosts=(S.activities||[]).filter(function(a){return a.type==='post'&&a.status==='pending';});
   var pendComms=(S.activities||[]).filter(function(a){return a.type==='comment'&&a.status==='pending';});
-  var nInbox=pendNotes.length+pendPosts.length+pendComms.length+(pend>0?1:0)+(S.icpApproved?0:1);
+  var pendDms=(S.activities||[]).filter(function(a){return a.type==='dm'&&a.status==='pending';});
+  var nInbox=pendNotes.length+pendPosts.length+pendComms.length+pendDms.length+(pend>0?1:0)+(S.icpApproved?0:1);
   if(nInbox>0){
     out+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:11px"><span style="font-size:12px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber-tx)">Awaiting your approval</span><span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">'+nInbox+'</span><div class="spacer"></div><span style="font-size:12px;color:var(--muted);font-weight:600">Nothing goes live on LinkedIn until you approve it</span></div>';
     if(!S.icpApproved){
@@ -346,6 +347,9 @@ function vDashboard(){
     if(pend>0){
       out+='<div class="card pad" style="margin-bottom:12px;border-color:var(--amber-bd)"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">PROSPECTS</span><div style="font-weight:800;font-size:14px">'+pend+' prospect'+(pend>1?'s':'')+' waiting to be approved</div><div class="spacer"></div><button class="btn btn-teal btn-sm" onclick="A.approveAll()">Approve all</button><button class="btn btn-out btn-sm" onclick="A.filterProspects(\'pending\')">Review one by one</button></div></div>';
     }
+    // DMs first: someone has already accepted, so this is the warmest thing
+    // in the queue and the closest to a booked demo.
+    out+=pendDms.map(dmCard).join('');
     out+=pendNotes.map(notesBatchCard).join('');
     out+=pendPosts.map(queuedPostCard).join('');
     out+=pendComms.map(function(a){return actCard(a,true);}).join('');
@@ -445,6 +449,40 @@ function actCard(a,editable){
 function planCard(a){
   return '<div class="card pad" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:30px;height:30px;border-radius:50%;background:#EDEAF8;color:#5B4AA8;display:grid;place-items:center;font-weight:800;font-size:11px;flex-shrink:0">'+initials(a.name)+'</div><div style="min-width:0"><div style="font-weight:800;font-size:13px">'+esc(a.name)+'</div><div style="font-size:11.5px;color:var(--muted);font-weight:600">'+esc(a.company)+'</div></div><div class="spacer"></div><span class="badge" style="background:#EDEAF8;color:#5B4AA8">'+esc(a.label||'Warm-up')+'</span>'+liLink(a.li,'in')+'</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.55">'+esc(a.reason)+'</div>'+(a.text?'<div style="margin-top:9px;font-size:12px;color:var(--muted);line-height:1.55"><b style="color:var(--sec);font-weight:700">Plan:</b> '+esc(a.text)+'</div>':'')+(a.note?'<div style="margin-top:11px"><div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--teal-h);margin-bottom:5px">Draft connection note</div><div style="background:var(--teal-soft);border:1px solid #D8EAE5;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;color:var(--ink)">'+esc(a.note)+'</div></div>':'')+'</div>';
 }
+// A direct message waiting to be sent to someone who accepted a connection.
+// Needs its own card: a DM is not a comment (no "their latest post") and not a
+// post (no Tue/Thu slot), and until this existed an accepted connection had no
+// approvable next step, so the funnel stalled at Connected.
+function dmCard(a){
+  var editing=(S.editActId===a.id&&!a.posted);
+  var st=a.status||'pending';
+  var badge = st==='approved' ? (a.posted?'SENT':'APPROVED') : (st==='rejected'?'REJECTED':'AWAITING YOUR APPROVAL');
+  var bg = st==='approved' ? 'var(--teal-tint)' : (st==='rejected'?'#FDECEC':'var(--amber-tint)');
+  var col= st==='approved' ? 'var(--teal-h)'   : (st==='rejected'?'var(--danger)':'var(--amber-tx)');
+  var body = editing
+    ? '<textarea id="actEdit_'+a.id+'" class="f" style="width:100%;min-height:150px;line-height:1.6;font-size:13px;padding:11px 13px">'+esc(a.text)+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-teal btn-sm" onclick="A.saveActivityEdit(\''+a.id+'\')">Save draft</button><button class="btn btn-out btn-sm" onclick="A.editActivity(\''+a.id+'\')">Cancel</button></div>'
+    : '<div style="background:var(--teal-soft);border:1px solid #D8EAE5;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.6;color:var(--ink);white-space:pre-wrap">'+esc(a.text)+'</div>';
+  var why='<div style="border:1px solid var(--border);border-radius:11px;padding:11px 14px"><div class="eyebrow" style="margin-bottom:5px">Why send this</div><div style="font-size:12.5px;line-height:1.55;color:var(--ink2)">'+esc(a.reason)+'</div></div>';
+  var actions='';
+  if(editing){ actions=''; }
+  else if(st==='pending'){
+    actions='<div style="display:flex;gap:8px;margin-top:13px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><button class="btn btn-teal btn-sm" onclick="A.approveActivity(\''+a.id+'\')">Approve</button><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-sm" style="border:1px solid var(--danger-bd);background:#fff;color:var(--danger)" onclick="A.rejectActivity(\''+a.id+'\')">Reject</button></div>';
+  } else if(st==='approved'&&a.posted){
+    actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Sent '+esc(a.posted)+'</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.unmarkPosted(\''+a.id+'\')">Undo</button></div>';
+  } else if(st==='approved'){
+    actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px;flex-wrap:wrap"><span style="font-size:12px;color:var(--green-tx);font-weight:700">✓ Approved, cleared to send</span><div class="spacer"></div><button class="btn btn-out teal btn-sm" onclick="A.editActivity(\''+a.id+'\')">Edit</button><button class="btn btn-teal btn-sm" onclick="A.markPosted(\''+a.id+'\')">Mark sent</button><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';
+  } else {
+    actions='<div style="display:flex;align-items:center;gap:10px;margin-top:12px;border-top:1px solid var(--border-soft);padding-top:12px"><span style="font-size:12px;color:var(--danger);font-weight:700">Rejected, will not be sent</span><div class="spacer"></div><button class="btn btn-out btn-sm" onclick="A.reopenActivity(\''+a.id+'\')">Reopen</button></div>';
+  }
+  return '<div class="card" style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;margin-bottom:14px">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge" style="background:'+bg+';color:'+col+'">'+badge+'</span>'
+    +'<span style="font-weight:800;font-size:14px">Message to '+esc(a.name)+'</span>'
+    +'<span style="font-size:11.5px;color:var(--muted);font-weight:600">'+esc(a.company||'')+'</span>'
+    +'<div class="spacer"></div>'+liLink(a.li,'in')+'</div>'
+    +'<div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--faint)">'+esc(a.post||'They accepted your connection request')+'</div>'
+    +body+why+actions+'</div>';
+}
+
 function notesBatchCard(a){
   var st=a.status||'pending';
   var badge = st==='approved' ? 'APPROVED' : (st==='rejected'?'REJECTED':'AWAITING YOUR APPROVAL');
@@ -498,7 +536,8 @@ function vActivity(){
   var acts=S.activities||[];
   var pendC=acts.filter(function(a){return a.type==='comment'&&a.status==='pending';});
   var doneC=acts.filter(function(a){return a.type==='comment'&&a.status!=='pending';});
-  var plan=acts.filter(function(a){return a.type!=='comment'&&a.type!=='post'&&a.type!=='notes';});
+  var dms=acts.filter(function(a){return a.type==='dm';});
+  var plan=acts.filter(function(a){return a.type!=='comment'&&a.type!=='post'&&a.type!=='notes'&&a.type!=='dm';});
   var log='<div style="margin-top:4px"><div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Earlier</div><div class="card" style="overflow:hidden">'+
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px;border-bottom:1px solid var(--hair)"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 27</span><span class="badge" style="background:var(--teal-tint);color:var(--teal-h);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Health</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Ran the account health check</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Premium + Sales Navigator, 2,646 connections, no restrictions, rested. Cleared to start warm-up on a safe ramp.</div></div></div>'+
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px;border-bottom:1px solid var(--hair)"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 27</span><span class="badge" style="background:var(--green-tint);color:var(--green-tx);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Approve</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">All 50 prospects approved into the pipeline</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Approved and syncing across devices via the shared backend.</div></div></div>'+
@@ -506,6 +545,7 @@ function vActivity(){
     '<div style="display:flex;gap:14px;align-items:flex-start;padding:13px 18px"><span class="mono" style="font-size:11.5px;font-weight:600;color:var(--faint);width:52px;flex-shrink:0;margin-top:2px">Jul 23</span><span class="badge" style="background:var(--purple-tint);color:var(--purple);flex-shrink:0;margin-top:1px;border-radius:6px;text-transform:uppercase">Update</span><div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:700">Revised the prospect list per client feedback</div><div style="font-size:12.5px;color:var(--sec2);line-height:1.5;margin-top:2px">Kept 25 operations leaders; backfilled with 25 marketing leaders and SMB owners/CEOs across all industries.</div></div></div></div></div>';
   var out='<div class="screen narrow"><div><div class="page-h">Activity</div><div class="page-sub">Every action taken on your behalf - each with the reasoning, and your approval where it matters</div></div>'+nextSessionCard();
   out+=pipelineStrip();
+  if(dms.length){out+='<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--teal-h)">Messages to people who accepted</span><span class="badge" style="background:var(--teal-tint);color:var(--teal-h)">'+dms.length+'</span></div>'+dms.map(dmCard).join('')+'</div>';}
   if(pendC.length){out+='<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--amber-tx)">Awaiting your approval - warm-up comments</span><span class="badge" style="background:var(--amber-tint);color:var(--amber-tx)">'+pendC.length+'</span></div>'+pendC.map(function(a){return actCard(a,true);}).join('')+'</div>';}
   if(plan.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Warm-up plan · quiet profiles (no recent post to comment on)</div>'+plan.map(function(a){return planCard(a);}).join('')+'</div>';}
   if(doneC.length){out+='<div style="margin-top:4px"><div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Reviewed comments</div>'+doneC.map(function(a){return actCard(a,true);}).join('')+'</div>';}
