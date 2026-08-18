@@ -213,8 +213,15 @@ function personaOf(t){var s=t.toLowerCase();
 // 40/35/15/10 split, fit alone was 90 points, so a five-years-dormant CIO still
 // scored 87 and sat near the top of the list. Fit says whether they are worth
 // talking to; activity says whether a conversation can actually be started now.
-function activityScore(days,usable){
-  if(days===null||days===undefined)return [0,'Not checked yet, so this score is provisional until we look at their profile'];
+// engaged: 'replied' | 'accepted' | null. A prospect who has actually responded to
+// us is PROVEN reachable, which is the whole thing this component tries to predict
+// from posting habits. Without this, Sabina (our only accepted connection) and
+// Emily (three comments and a live two-way thread) both scored 58 and sat near the
+// bottom of the list, below people who merely post often. Proof beats proxy.
+function activityScore(days,usable,engaged){
+  if(engaged==='replied')return [40,'Already in a two-way conversation with us. The warmest prospect type there is'];
+  if(engaged==='accepted')return [38,'Accepted our connection request, so they are proven reachable'];
+  if(days===null||days===undefined)return [16,'Not checked yet. Scored neutrally so an unknown is not treated as a dead lead'];
   if(days<0)return [0,'Has never posted. No way in except a connection note, and no signal they read LinkedIn'];
   if(usable===false)return [8,'Posts regularly, but it is advertising or reposts with nothing to engage with'];
   if(days<=7)return [40,'Posted in the last week. Commentable now, and warm touches land best here'];
@@ -223,13 +230,13 @@ function activityScore(days,usable){
   if(days<=90)return [8,'Last posted about '+Math.round(days/30)+' months ago. Effectively dormant'];
   return [4,'Last posted over 3 months ago. Dormant, so a demo from here is unlikely soon'];
 }
-function scoreProspect(title,co,email,activityDays,contentUsable){
+function scoreProspect(title,co,email,activityDays,contentUsable,engaged){
   var persona=personaOf(title);var s=title.toLowerCase();
   var roles=(s.match(/coo|cio|cto|cmo|ceo|president|cxo|cdo|ciso|founder|owner/g)||[]).length;
   var role=roles>=3?25:roles===2?24:/vp|head|director|manager/.test(s)?21:23;
   var target=(persona==='Marketing'||persona==='Operations'||persona==='Owner/CEO');
   var fit=target?24:19;var reach=email?9:5;
-  var act=activityScore(typeof activityDays==='undefined'?null:activityDays,contentUsable);
+  var act=activityScore(typeof activityDays==='undefined'?null:activityDays,contentUsable,engaged);
   var why=[
     [role,25,'Role & seniority fit',roles>=2?'Senior decision-maker wearing multiple hats':'Senior executive with buying authority'],
     [fit,25,'Persona & size fit',persona+' · SMB-mid-market · United States'],
